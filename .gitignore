@@ -1,0 +1,10 @@
+build/
+out/
+.vs/
+.vscode/
+.venv/
+media/
+__pycache__/
+*.pyc
+*.pdf
+!informe/*.pdf
