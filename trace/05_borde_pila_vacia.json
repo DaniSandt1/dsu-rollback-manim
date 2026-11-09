@@ -1,0 +1,23 @@
+{
+  "format": "dsu-rollback-trace/1",
+  "scenario": "05_borde_pila_vacia",
+  "description": "rollback() con la historia vacía",
+  "meta": {},
+  "events": [
+    {"id":0,"op":"init","n":3,"record_noops":true,"state":{"parent":[0,1,2],"size":[1,1,1],"history":[],"components":3}},
+    {"id":1,"op":"mark","text":"Pila vacía: no hay nada que deshacer","state":{"parent":[0,1,2],"size":[1,1,1],"history":[],"components":3}},
+    {"id":2,"op":"rollback_call","depth":0,"state":{"parent":[0,1,2],"size":[1,1,1],"history":[],"components":3}},
+    {"id":3,"op":"rollback_empty","state":{"parent":[0,1,2],"size":[1,1,1],"history":[],"components":3}},
+    {"id":4,"op":"unite_call","a":0,"b":1,"state":{"parent":[0,1,2],"size":[1,1,1],"history":[],"components":3}},
+    {"id":5,"op":"find_root","x":0,"root":0,"steps":0,"state":{"parent":[0,1,2],"size":[1,1,1],"history":[],"components":3}},
+    {"id":6,"op":"find_root","x":1,"root":1,"steps":0,"state":{"parent":[0,1,2],"size":[1,1,1],"history":[],"components":3}},
+    {"id":7,"op":"push","child":1,"root":0,"marker":false,"state":{"parent":[0,1,2],"size":[1,1,1],"history":[[1,0]],"components":3}},
+    {"id":8,"op":"link","child":1,"root":0,"size_root":2,"state":{"parent":[0,0,2],"size":[2,1,1],"history":[[1,0]],"components":2}},
+    {"id":9,"op":"rollback_call","depth":1,"state":{"parent":[0,0,2],"size":[2,1,1],"history":[[1,0]],"components":2}},
+    {"id":10,"op":"pop","child":1,"root":0,"marker":false,"state":{"parent":[0,0,2],"size":[2,1,1],"history":[],"components":2}},
+    {"id":11,"op":"unlink","child":1,"root":0,"size_root":1,"state":{"parent":[0,1,2],"size":[1,1,1],"history":[],"components":3}},
+    {"id":12,"op":"mark","text":"Otra vez vacía","state":{"parent":[0,1,2],"size":[1,1,1],"history":[],"components":3}},
+    {"id":13,"op":"rollback_call","depth":0,"state":{"parent":[0,1,2],"size":[1,1,1],"history":[],"components":3}},
+    {"id":14,"op":"rollback_empty","state":{"parent":[0,1,2],"size":[1,1,1],"history":[],"components":3}}
+  ]
+}
