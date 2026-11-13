@@ -1,8 +1,8 @@
-"""Componentes visuales reutilizables (base tomada del Proyecto 1: listas enlazadas).
+"""Componentes visuales.
 
-Por ahora: paleta, helper de texto, `Link` (flecha que sigue a sus extremos) y `Tag`
-(etiqueta-puntero). Los componentes propios del DSU (nodo del bosque, arreglos
-parent/size y pila de historia) se agregan en la siguiente etapa.
+Base tomada del Proyecto 1 (paleta, `txt`, `Link`, `Tag`) más los componentes del DSU:
+`ForestNode`, `forest_layout`, `ArrayView` (parent/size) y `HistoryStack`.
+Ninguno conoce la lógica del DSU: solo dibujan el estado que reciben de la traza.
 """
 from __future__ import annotations
 
@@ -116,3 +116,164 @@ class Tag(VGroup):
         self._old, self.target = self.target, mob
         self.alpha.set_value(0)
         return self.alpha.animate.set_value(1)
+
+
+# --------------------------------------------------------------------------- DSU
+
+
+def edge_points(child, parent):
+    """Extremos de la flecha hijo → padre, sobre el borde de cada círculo."""
+    c, p = child.get_center(), parent.get_center()
+    d = p - c
+    length = np.linalg.norm(d)
+    u = d / length if length > 1e-6 else UP
+    return c + u * child.radius, p - u * parent.radius
+
+
+class ForestNode(VGroup):
+    """Un elemento del DSU: círculo con su etiqueta. Las raíces llevan borde dorado."""
+
+    def __init__(self, label, radius=0.3):
+        super().__init__()
+        self.radius = radius
+        self.circle = Circle(radius=radius).set_fill(C_NODE_BG, 1).set_stroke(C_NODE, 3)
+        self.label = txt(str(label), max(14, int(radius * 85)), mono=True).move_to(self.circle)
+        if self.label.width > radius * 1.5:
+            self.label.scale_to_fit_width(radius * 1.5)
+        self.add(self.circle, self.label)
+
+    def style_root(self, is_root):
+        self.circle.set_stroke(C_ROOT if is_root else C_NODE, 4 if is_root else 3)
+        return self
+
+
+def forest_layout(parent, center_x, top_y, unit, level_h, gap=0.6):
+    """Posición de cada nodo para dibujar el bosque descrito por `parent`.
+
+    Cada árbol se dibuja con la raíz arriba; un nodo queda centrado sobre sus hijos
+    (ordenados por índice) y los árboles van de izquierda a derecha según su raíz.
+    """
+    n = len(parent)
+    children = [[] for _ in range(n)]
+    roots = []
+    for v, p in enumerate(parent):
+        if p == v:
+            roots.append(v)
+        else:
+            children[p].append(v)
+
+    width = [0.0] * n
+
+    def measure(v):
+        width[v] = max(1.0, sum(measure(c) for c in children[v]))
+        return width[v]
+
+    for r in roots:
+        measure(r)
+
+    slot, depth = [0.0] * n, [0] * n
+
+    def place(v, left, d):
+        depth[v] = d
+        if not children[v]:
+            slot[v] = left + 0.5
+            return
+        cur = left
+        for c in children[v]:
+            place(c, cur, d + 1)
+            cur += width[c]
+        slot[v] = (slot[children[v][0]] + slot[children[v][-1]]) / 2
+
+    cur = 0.0
+    for r in roots:
+        place(r, cur, 0)
+        cur += width[r] + gap
+    total = cur - gap if roots else 0.0
+    x0 = center_x - total * unit / 2
+    return {v: np.array([x0 + slot[v] * unit, top_y - depth[v] * level_h, 0.0]) for v in range(n)}
+
+
+class ArrayView(VGroup):
+    """Fila de celdas con el contenido de un arreglo (parent o size)."""
+
+    def __init__(self, name, values, cell=0.55, show_index=False):
+        super().__init__()
+        self.values = list(values)
+        self.font = max(14, int(cell * 46))
+        self.cells = VGroup(*[
+            Square(cell).set_stroke(C_GRID, 2).set_fill(C_NODE_BG, 1) for _ in values
+        ]).arrange(RIGHT, buff=0)
+        self.vals = VGroup(*[
+            txt(str(v), self.font, mono=True).move_to(c) for v, c in zip(values, self.cells)
+        ])
+        self.name = txt(name, 24, C_MUTED, mono=True).next_to(self.cells, LEFT, buff=0.25)
+        self.index = VGroup(*[
+            txt(str(i), 16, C_MUTED, mono=True).next_to(c, UP, buff=0.08) for i, c in enumerate(self.cells)
+        ]) if show_index else VGroup()
+        self.colored = set()
+        self.add(self.cells, self.vals, self.name, self.index)
+
+    def update_to(self, values, color):
+        """Animaciones para pasar a `values`; las celdas que cambian quedan resaltadas."""
+        anims = []
+        for i, (old, new) in enumerate(zip(self.values, values)):
+            if old != new:
+                fresh = txt(str(new), self.font, color, mono=True).move_to(self.cells[i])
+                anims += [Transform(self.vals[i], fresh), Indicate(self.cells[i], color=color, scale_factor=1.12)]
+                self.colored.add(i)
+            elif i in self.colored:
+                anims.append(self.vals[i].animate.set_color(C_TEXT))
+                self.colored.discard(i)
+        self.values = list(values)
+        return anims
+
+    def shown_values(self):
+        return list(self.values)
+
+
+class HistoryStack(VGroup):
+    """Pila de cambios: cada unite apila (hijo → raíz) o un marcador vacío."""
+
+    def __init__(self, capacity, height=5.0, width=1.9):
+        super().__init__()
+        self.w = width
+        self.entry_h = min(0.5, (height - 0.2) / max(capacity, 1))
+        h = height
+        self.frame = VGroup(
+            Line([-width / 2, h, 0], [-width / 2, 0, 0]),
+            Line([-width / 2, 0, 0], [width / 2, 0, 0]),
+            Line([width / 2, 0, 0], [width / 2, h, 0]),
+        ).set_stroke(C_MUTED, 3)
+        self.title = txt("history", 24, C_STACK, mono=True).next_to(self.frame, UP, buff=0.15)
+        self.entries = []
+        self.add(self.frame, self.title)
+
+    @property
+    def bottom(self):
+        return self.frame[1].get_center()
+
+    def level_y(self, k):
+        """Altura del borde inferior de la entrada número k (0 = fondo)."""
+        return self.bottom[1] + 0.1 + self.entry_h * k
+
+    def make_entry(self, child, root, labels):
+        marker = child < 0
+        color = C_MARK if marker else C_STACK
+        box = RoundedRectangle(corner_radius=0.06, width=self.w - 0.24, height=self.entry_h - 0.07)
+        box.set_fill(C_NODE_BG, 1).set_stroke(color, 2.5)
+        text = "∅ redundante" if marker else f"{labels[child]} → {labels[root]}"
+        label = txt(text, max(14, int(self.entry_h * 48)), color, mono=True)
+        if label.width > box.width - 0.15:
+            label.scale_to_fit_width(box.width - 0.15)
+        entry = VGroup(box, label.move_to(box))
+        k = len(self.entries)
+        entry.move_to([self.bottom[0], self.level_y(k) + self.entry_h / 2, 0])
+        return entry
+
+    def snapshot_line(self, t):
+        y = self.level_y(t) - 0.035
+        x = self.bottom[0]
+        line = DashedLine([x - self.w / 2 - 0.15, y, 0], [x + self.w / 2 + 0.15, y, 0], dash_length=0.1)
+        line.set_stroke(C_ROOT, 3)
+        tag = txt(f"t={t}", 20, C_ROOT, mono=True).next_to(line, LEFT, buff=0.1)
+        return VGroup(line, tag)
