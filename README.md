@@ -7,8 +7,8 @@ se genera a partir de la **traza real** de esa implementación.
 
 **Integrantes:** Daniel Sandoval · Percy Castro
 
-> Estado: en desarrollo. Ya están la implementación en C++, los tests y la exportación de trazas.
-> La animación se está construyendo (ver [Hoja de ruta](#hoja-de-ruta)).
+> Estado: en desarrollo. Ya están la implementación en C++, los tests, la exportación de trazas
+> y la primera escena animada (rollback). Ver [Hoja de ruta](#hoja-de-ruta).
 
 ## La estructura de datos
 
@@ -50,7 +50,9 @@ cpp/src/escenarios.cpp         escenarios del video → trace/*.json
 cpp/tests/tests.cpp            tests unitarios + prueba aleatoria contra fuerza bruta (BFS)
 trace/                         trazas generadas (versionadas, para renderizar sin compilar)
 trace_loader.py                lee y valida las trazas
-components.py                  componentes visuales de Manim
+components.py                  componentes visuales: nodo, bosque, arreglos parent/size, pila de historia
+animator.py                    TraceAnimator: convierte cada evento de la traza en animaciones
+dsu_video.py                   escenas del video
 ```
 
 ## Software requerido
@@ -76,6 +78,20 @@ build/Release/escenarios trace                  # (en Linux: build/escenarios tr
 python trace_loader.py
 ```
 
+## Renderizar la animación
+
+```bash
+# Escena de rollback: vista previa (480p) o alta resolución (1080p60)
+manim -pql dsu_video.py S02Rollback
+manim -qh  dsu_video.py S02Rollback
+
+# Cualquier otra traza con el mismo animador (PowerShell: $env:TRACE="trace/...json"; manim ...)
+TRACE=trace/06_peor_caso_altura.json manim -pql dsu_video.py TraceDemo
+```
+
+El animador no calcula nada del DSU: después de cada evento verifica que las flechas, los
+arreglos y la pila dibujados coincidan exactamente con el estado que registró el programa C++.
+
 ### Escenarios
 
 | Archivo | Qué muestra |
@@ -91,7 +107,8 @@ python trace_loader.py
 ## Hoja de ruta
 
 - [x] DSU con rollback en C++, tests y exportación de trazas a JSON
-- [ ] Componentes de Manim: bosque, arreglos `parent`/`size`, pila de historia
+- [x] Componentes de Manim: bosque, arreglos `parent`/`size`, pila de historia
+- [x] Animador de trazas y primera escena (`S02Rollback`)
 - [ ] Escenas: motivación, concepto/ADT, por qué no compresión, rollback, casos borde, complejidad, créditos
 - [ ] Guion de narración y render final (1080p60, ≤ 5 min)
 - [ ] Informe (PDF, ≤ 4 páginas)
