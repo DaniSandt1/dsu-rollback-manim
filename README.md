@@ -1,3 +1,5 @@
+Enlace del video del avance: https://drive.google.com/file/d/1Bechh-e5sKgRYrynzRpX2TC7jUfC3Ukj/view?usp=drive_link
+
 # DSU con rollback, animado con Manim
 
 Proyecto 2 del curso **CS2023 – Algoritmos y Estructuras de Datos** (UTEC, 2026-2): un video
