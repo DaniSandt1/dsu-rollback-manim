@@ -14,22 +14,15 @@
 
 namespace fs = std::filesystem;
 
-// Motivación: ciudades conectadas por cables; probamos un escenario y lo deshacemos.
+// Motivación: red de computadoras y prueba de una conexión temporal.
 static void motivacion(Tracer& t) {
-    t.meta(Fields().add("labels", std::vector<std::string>{"Lima", "Cusco", "Arequipa", "Piura", "Trujillo", "Puno"}));
+    t.meta(Fields().add("labels", std::vector<std::string>{"A", "B", "C", "D", "E", "F"}));
     DSURollback d(6, &t);
-    d.mark("Una red de ciudades, cada una aislada");
-    d.unite(0, 4);  // Lima - Trujillo
-    d.unite(1, 5);  // Cusco - Puno
-    d.unite(1, 2);  // Cusco - Arequipa
-    d.same(0, 1);
+    d.unite(0, 1);
+    d.unite(2, 3);
     const auto t0 = d.snapshot();
-    d.mark("¿Y si agregamos un cable Trujillo - Puno?");
-    d.unite(4, 5);
-    d.same(0, 1);
-    d.mark("Ctrl+Z: volvemos al estado anterior");
+    d.unite(1, 2);
     d.rollback_to(t0);
-    d.same(0, 1);
 }
 
 // Operaciones básicas y unión por tamaño (el árbol chico se cuelga del grande).
@@ -131,7 +124,7 @@ int main(int argc, char** argv) {
         std::function<void(Tracer&)> run;
     };
     const std::vector<Scenario> scenarios{
-        {"00_motivacion", "Red de ciudades: probar un cable y deshacerlo", motivacion},
+        {"00_motivacion", "Red de computadoras: probar una conexión y deshacerla", motivacion},
         {"01_union_por_tamano", "find, unite y same con unión por tamaño", union_por_tamano},
         {"02_rollback", "snapshot, rollback_to y rollback", rollback_basico},
         {"03_borde_redundante", "Unión redundante: se apila un marcador", borde_redundante},

@@ -3,6 +3,7 @@ out/
 .vs/
 .vscode/
 .venv/
+env/
 media/
 __pycache__/
 *.pyc
