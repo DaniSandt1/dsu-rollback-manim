@@ -30,7 +30,7 @@ class S00Motivacion(Scene):
         subtitle = Text("Conectividad dinámica", font_size=26, color=BLUE_B).next_to(title, DOWN)
         authors = Text("Daniel Sandoval · Percy Castro", font_size=20).next_to(subtitle, DOWN, buff=0.45)
         self.play(FadeIn(title), FadeIn(subtitle), FadeIn(authors))
-        self.wait(2)
+        self.wait(1.5)
         self.play(FadeOut(title), FadeOut(subtitle), FadeOut(authors))
 
         heading = Text("Una red de computadoras", font_size=32).to_edge(UP)
@@ -130,20 +130,77 @@ class S01Operaciones(TraceScene):
             Text("same(a, b)  →  ¿están conectados?", font_size=26, color=BLUE_B),
         ).arrange(DOWN, aligned_edge=LEFT, buff=0.3).next_to(example, DOWN, buff=0.55)
         self.play(FadeIn(heading), FadeIn(definition))
-        self.wait(2)
+        self.wait(1.2)
         self.play(FadeIn(example))
-        self.wait(2)
+        self.wait(1.2)
         self.play(LaggedStart(*[FadeIn(op, shift=RIGHT * 0.2) for op in operations], lag_ratio=0.3))
-        self.wait(4)
+        self.wait(3)
         self.play(FadeOut(heading), FadeOut(definition), FadeOut(example), FadeOut(operations))
 
         trace = load_trace(TRACE_DIR / "01_union_por_tamano.json")
         OperationsAnimator(self, trace, "Operaciones y unión por tamaño").run()
 
 
+class RollbackAnimator(TraceAnimator):
+    """Enfatiza la historia y deja tiempo para narrar cada reversión."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.saved_state = None
+        self.undo_count = 0
+
+    def on_push(self, ev):
+        super().on_push(ev)
+        if len(ev.state.history) == 1:
+            self.play(Indicate(self.stack.entries[-1], color=YELLOW), rt=0.7)
+            self.wait(2.5)
+
+    def on_snapshot(self, ev):
+        self.saved_state = ev.state
+        super().on_snapshot(ev)
+        self.wait(4)  # El snapshot guarda la profundidad, no una copia del bosque.
+
+    def on_rollback_to_call(self, ev):
+        super().on_rollback_to_call(ev)
+        self.wait(2)
+
+    def on_pop(self, ev):
+        self.undo_count += 1
+        self.play(Indicate(self.stack.entries[-1], color=RED), rt=0.7)
+        super().on_pop(ev)
+
+    def on_unlink(self, ev):
+        super().on_unlink(ev)
+        self.wait(2.5 if self.undo_count == 1 else 1.2)
+
+    def on_rollback_to_done(self, ev):
+        # El estado recuperado debe coincidir exactamente con el snapshot de C++.
+        assert ev.state == self.saved_state
+        self.wait(2.5)
+        super().on_rollback_to_done(ev)
+
+    def on_same_result(self, ev):
+        super().on_same_result(ev)
+        self.wait(1.5)
+
+
 class S02Rollback(TraceScene):
-    trace_file = "02_rollback.json"
-    title = "Rollback: volver atrás en el tiempo"
+    """Snapshot, uniones temporales y recuperación desde la traza real."""
+
+    def construct(self):
+        heading = Text("Guardar y recuperar un estado", font_size=40).to_edge(UP, buff=0.6)
+        explanation = VGroup(
+            Text("Cada unión registra un cambio en la pila", font_size=28),
+            Text("snapshot() guarda la posición actual", font_size=28, color=YELLOW),
+            Text("rollback() deshace el cambio más reciente", font_size=28, color=RED_B),
+        ).arrange(DOWN, buff=0.45).move_to(ORIGIN)
+        self.play(FadeIn(heading))
+        for line in explanation:
+            self.play(FadeIn(line, shift=UP * 0.1), run_time=0.7)
+            self.wait(1.3)
+        self.play(FadeOut(heading), FadeOut(explanation))
+        trace = load_trace(TRACE_DIR / "02_rollback.json")
+        RollbackAnimator(self, trace, "Snapshot y rollback").run()
 
 
 class TraceDemo(TraceScene):

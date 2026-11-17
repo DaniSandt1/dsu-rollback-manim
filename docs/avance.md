@@ -33,3 +33,11 @@ La escena inicial consume `trace/00_motivacion.json`, generada por el escenario 
 `S01Operaciones` presenta el ADT de conjuntos disjuntos aplicado a componentes conectadas y define `find`, `unite` y `same`. Después reproduce `01_union_por_tamano.json`: los círculos dorados son representantes, las flechas apuntan de cada elemento a su padre y los anillos resaltan los recorridos de `find`. Se ven las uniones, el cambio de tamaños y consultas de conectividad. La pila anticipa la explicación de rollback.
 
 La escena reserva pausas para narrar la primera unión, explicar `parent` y `size`, comparar tamaños y comentar los resultados de las consultas. Aún no tiene narración; el ritmo podrá ajustarse al grabar el guion.
+
+## Tercera escena: snapshot y rollback
+
+`S02Rollback` presenta la pila de cambios y muestra que `snapshot()` guarda su profundidad. A partir de ese punto se hacen tres uniones temporales; `rollback_to(t)` retira los registros desde el más reciente y restaura padres y tamaños hasta recuperar el estado guardado. Una consulta muestra cómo cambia la conectividad y un `rollback()` adicional deshace la unión anterior al snapshot.
+
+La vista previa dura aproximadamente 86 segundos y reserva pausas para narración. El animador comprueba que el estado recuperado coincida con el del snapshot. Al montar el video habrá que ajustar los tiempos previstos de las escenas restantes para mantener el límite de cinco minutos.
+
+Las vistas previas actuales duran aproximadamente 20 segundos (motivación), 62 segundos (operaciones) y 86 segundos (rollback): 2 minutos y 48 segundos en total. Las introducciones de texto se han acortado; los tiempos definitivos se ajustarán al grabar la voz.
