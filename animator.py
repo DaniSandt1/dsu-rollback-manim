@@ -123,8 +123,6 @@ class TraceAnimator:
     def build(self):
         st = self.trace.initial
         self.header = txt(self.title, 34).to_edge(UP, buff=0.3)
-        source = txt(f"traza: trace/{self.trace.scenario}.json  ·  generada por escenarios.cpp",
-                     16, C_MUTED, mono=True).to_corner(DL, buff=0.25)
 
         pos = self.positions(st)
         self.nodes = [ForestNode(self.lab(v), self.radius).move_to(pos[v]).style_root(True)
@@ -141,7 +139,7 @@ class TraceAnimator:
         self.stack = HistoryStack(self.capacity, height=STACK_HEIGHT)
         self.stack.shift(np.array([STACK_X, STACK_BOTTOM, 0]) - self.stack.bottom)
 
-        self.play(FadeIn(self.header, shift=DOWN * 0.2), FadeIn(source), rt=0.8)
+        self.play(FadeIn(self.header, shift=DOWN * 0.2), rt=0.8)
         self.play(LaggedStart(*[GrowFromCenter(nd) for nd in self.nodes], lag_ratio=0.08), rt=1.0)
         self.play(FadeIn(self.parent_arr), FadeIn(self.size_arr), FadeIn(self.stack), rt=0.8)
         self.check(st)

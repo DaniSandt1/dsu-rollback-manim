@@ -27,3 +27,9 @@ El rollback deshace modificaciones recientes en orden inverso; no elimina una co
 ## Implementación
 
 La escena inicial consume `trace/00_motivacion.json`, generada por el escenario C++. Las escenas posteriores pueden reutilizar las trazas existentes; la escena de rollback podrá ajustarse durante el desarrollo.
+
+## Segunda escena: concepto y operaciones
+
+`S01Operaciones` presenta el ADT de conjuntos disjuntos aplicado a componentes conectadas y define `find`, `unite` y `same`. Después reproduce `01_union_por_tamano.json`: los círculos dorados son representantes, las flechas apuntan de cada elemento a su padre y los anillos resaltan los recorridos de `find`. Se ven las uniones, el cambio de tamaños y consultas de conectividad. La pila anticipa la explicación de rollback.
+
+La escena reserva pausas para narrar la primera unión, explicar `parent` y `size`, comparar tamaños y comentar los resultados de las consultas. Aún no tiene narración; el ritmo podrá ajustarse al grabar el guion.

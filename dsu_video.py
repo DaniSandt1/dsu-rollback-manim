@@ -86,6 +86,61 @@ class TraceScene(Scene):
         TraceAnimator(self, trace, self.title, self.speed).run()
 
 
+class OperationsAnimator(TraceAnimator):
+    """Deja espacio para explicar las operaciones en puntos concretos de la traza."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.unions_shown = 0
+        self.queries_shown = 0
+
+    def on_unite_call(self, ev):
+        self.unions_shown += 1
+        super().on_unite_call(ev)
+        if self.unions_shown == 1:
+            self.wait(2.5)  # Presentar unite y la búsqueda de ambas raíces.
+
+    def on_link(self, ev):
+        super().on_link(ev)
+        if self.unions_shown == 1:
+            self.wait(3)  # Explicar parent, size y el representante.
+        elif self.unions_shown == 6:
+            self.wait(3)  # Comparar los tamaños de los conjuntos unidos.
+        else:
+            self.wait(0.5)
+
+    def on_same_result(self, ev):
+        super().on_same_result(ev)
+        self.queries_shown += 1
+        self.wait(2 if self.queries_shown == 1 else 2.5)
+
+
+class S01Operaciones(TraceScene):
+    """Introduce el ADT y reproduce las operaciones de la traza C++."""
+
+    def construct(self):
+        heading = Text("Conjuntos disjuntos", font_size=42).to_edge(UP, buff=0.5)
+        definition = Text("Cada elemento pertenece a un único conjunto", font_size=29)
+        definition.next_to(heading, DOWN, buff=0.6)
+        example = Text("En una red, cada conjunto representa\nuna componente conectada",
+                       font_size=27, line_spacing=1.2).next_to(definition, DOWN, buff=0.55)
+        operations = VGroup(
+            Text("find(x)  →  representante de x", font_size=26, color=YELLOW),
+            Text("unite(a, b)  →  une dos conjuntos", font_size=26, color=GREEN),
+            Text("same(a, b)  →  ¿están conectados?", font_size=26, color=BLUE_B),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.3).next_to(example, DOWN, buff=0.55)
+        self.play(FadeIn(heading), FadeIn(definition))
+        self.wait(2)
+        self.play(FadeIn(example))
+        self.wait(2)
+        self.play(LaggedStart(*[FadeIn(op, shift=RIGHT * 0.2) for op in operations], lag_ratio=0.3))
+        self.wait(4)
+        self.play(FadeOut(heading), FadeOut(definition), FadeOut(example), FadeOut(operations))
+
+        trace = load_trace(TRACE_DIR / "01_union_por_tamano.json")
+        OperationsAnimator(self, trace, "Operaciones y unión por tamaño").run()
+
+
 class S02Rollback(TraceScene):
     trace_file = "02_rollback.json"
     title = "Rollback: volver atrás en el tiempo"
