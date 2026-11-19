@@ -10,7 +10,7 @@ se genera a partir de la **traza real** de esa implementación.
 **Integrantes:** Daniel Sandoval · Percy Castro
 
 > Estado: en desarrollo. Ya están la implementación en C++, los tests, la exportación de trazas
-> y la primera escena animada (rollback). Ver [Hoja de ruta](#hoja-de-ruta).
+> y las seis escenas del video (≈ 4:45 en total). Ver [Hoja de ruta](#hoja-de-ruta).
 
 ## La estructura de datos
 
@@ -82,10 +82,19 @@ python trace_loader.py
 
 ## Renderizar la animación
 
+| Escena | Contenido | Traza | Duración aprox. |
+|---|---|---|---|
+| `S00Motivacion` | título, autores y red de computadoras | `00_motivacion` | 0:20 |
+| `S01Operaciones` | ADT, `find` / `unite` / `same`, unión por tamaño | `01_union_por_tamano` | 1:02 |
+| `S02Rollback` | `snapshot`, `rollback_to`, `rollback` | `02_rollback` | 1:26 |
+| `S03SinCompresion` | por qué no se comprimen caminos | `07_sin_compresion` | 0:49 |
+| `S04CasoBorde` | unión redundante (con y sin marcador) y pila vacía | `04`, `03`, `05` | 0:48 |
+| `S05Complejidad` | tabla de costos y alturas medidas en C++ | `medidas/alturas.json` | 0:20 |
+
 ```bash
-# Escena de rollback: vista previa (480p) o alta resolución (1080p60)
-manim -pql dsu_video.py S02Rollback
-manim -qh  dsu_video.py S02Rollback
+# Una escena: vista previa (480p) o alta resolución (1080p60)
+manim -pql dsu_video.py S03SinCompresion
+manim -qh  dsu_video.py S03SinCompresion
 
 # Cualquier otra traza con el mismo animador (PowerShell: $env:TRACE="trace/...json"; manim ...)
 TRACE=trace/06_peor_caso_altura.json manim -pql dsu_video.py TraceDemo
@@ -105,13 +114,20 @@ arreglos y la pila dibujados coincidan exactamente con el estado que registró e
 | `04_borde_sin_marcador` | el error típico de no apilarla |
 | `05_borde_pila_vacia` | `rollback()` sin historia |
 | `06_peor_caso_altura` | uniones balanceadas: altura exactamente log₂ 16 = 4 |
+| `07_sin_compresion` | `find` con compresión + `rollback`: la estructura queda inconsistente |
+| `medidas/alturas.json` | altura máxima medida en el peor caso, con y sin unión por tamaño (n = 2 … 1024) |
+
+En las trazas de error (`04`, `07`) el programa C++ ejecuta en paralelo la versión correcta y
+guarda sus respuestas en `meta.expected_same`; el video las usa para marcar "✗ correcto: …".
+`find_with_compression` existe solo para esa demostración: la estructura real nunca comprime.
 
 ## Hoja de ruta
 
 - [x] DSU con rollback en C++, tests y exportación de trazas a JSON
 - [x] Componentes de Manim: bosque, arreglos `parent`/`size`, pila de historia
 - [x] Animador de trazas y primera escena (`S02Rollback`)
-- [ ] Escenas: motivación, concepto/ADT, por qué no compresión, rollback, casos borde, complejidad, créditos
+- [x] Escenas: motivación, concepto/ADT, rollback, por qué no compresión, casos borde, complejidad
+- [ ] Créditos y escena `VideoCompleto`
 - [ ] Guion de narración y render final (1080p60, ≤ 5 min)
 - [ ] Informe (PDF, ≤ 4 páginas)
 
