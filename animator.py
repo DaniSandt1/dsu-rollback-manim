@@ -48,6 +48,7 @@ class TraceAnimator:
         self.result_text = None
         self.snapshots: dict[int, VGroup] = {}
         self.in_rollback_to = False
+        self.context = None  # operación en curso: "unite", "same", "find" o None
 
     # ------------------------------------------------------------- utilidades
 
@@ -76,7 +77,7 @@ class TraceAnimator:
         anims = list(extra)
         for v, node in enumerate(self.nodes):
             node.generate_target()
-            node.target.move_to(pos[v])
+            node.target.place(pos[v])
             node.target.style_root(state.parent[v] == v)
             anims.append(MoveToTarget(node))
         self.play(*anims, rt=rt)
@@ -125,7 +126,7 @@ class TraceAnimator:
         self.header = txt(self.title, 34).to_edge(UP, buff=0.3)
 
         pos = self.positions(st)
-        self.nodes = [ForestNode(self.lab(v), self.radius).move_to(pos[v]).style_root(True)
+        self.nodes = [ForestNode(self.lab(v), self.radius, max_label_w=self.unit * 0.92).place(pos[v]).style_root(True)
                       for v in range(self.n)]
 
         cell = min(0.55, 7.2 / max(self.n, 1))
@@ -167,9 +168,11 @@ class TraceAnimator:
         self.wait(1.0)
 
     def on_unite_call(self, ev):
+        self.context = "unite"
         self.set_op(f"unite({self.lab(ev['a'])}, {self.lab(ev['b'])})")
 
     def on_same_call(self, ev):
+        self.context = "same"
         self.set_op(f"same({self.lab(ev['a'])}, {self.lab(ev['b'])})")
 
     def on_snapshot(self, ev):
@@ -181,23 +184,37 @@ class TraceAnimator:
         self.play(Create(line), rt=0.6)
         self.wait(0.5)
 
+    def start_find_if_standalone(self, ev):
+        """Un find() llamado directamente (fuera de unite/same) muestra su propia operación."""
+        if self.context is None:
+            self.context = "find"
+            self.set_op(f"find({self.lab(ev['x'])})")
+
     def on_find_step(self, ev):
+        self.start_find_if_standalone(ev)
         a, b = self.nodes[ev["from"]], self.nodes[ev["to"]]
         if self.ring is None:
-            self.ring = Circle(radius=self.radius + 0.09).set_stroke(C_FIND, 5).move_to(a)
+            self.ring = Circle(radius=self.radius + 0.09).set_stroke(C_FIND, 5).move_to(a.circle)
             self.play(Create(self.ring), rt=0.3)
         self.lit.add(ev["from"])
-        self.play(self.ring.animate.move_to(b), self.arrows[ev["from"]].animate.set_color(C_FIND), rt=0.45)
+        self.play(self.ring.animate.move_to(b.circle), self.arrows[ev["from"]].animate.set_color(C_FIND), rt=0.45)
 
     def on_find_root(self, ev):
+        self.start_find_if_standalone(ev)
         node = self.nodes[ev["root"]]
         if self.ring is None:
-            self.ring = Circle(radius=self.radius + 0.09).set_stroke(C_ROOT, 5).move_to(node)
+            self.ring = Circle(radius=self.radius + 0.09).set_stroke(C_ROOT, 5).move_to(node.circle)
             self.play(Create(self.ring), rt=0.3)
         else:
             self.play(self.ring.animate.set_stroke(C_ROOT), rt=0.25)
         self.rings.append(self.ring)
         self.ring = None
+        if self.context == "find":
+            steps = ev["steps"]
+            self.set_result(f"→ {self.lab(ev['root'])}  ({steps} paso{'s' if steps != 1 else ''})", C_ROOT)
+            self.wait(1.2)
+            self.clear_find()
+            self.context = None
 
     def on_push(self, ev):
         entry = self.stack.make_entry(ev["child"], ev["root"], self.labels)
@@ -206,6 +223,7 @@ class TraceAnimator:
 
     def on_link(self, ev):
         child, root = ev["child"], ev["root"]
+        self.context = None
         self.clear_find()
         link = self.make_link(child, root)
         self.arrows[child], self.parent_of[child] = link, root
@@ -215,12 +233,14 @@ class TraceAnimator:
         self.relayout(st, extra=self.parent_arr.update_to(st.parent, C_NEW) + self.size_arr.update_to(st.size, C_NEW))
 
     def on_unite_redundant(self, ev):
+        self.context = None
         self.set_result("ya están juntos", C_MARK)
         self.clear_find()
 
     def on_same_result(self, ev):
         ok = ev["result"]
         self.set_result("→ true" if ok else "→ false", C_NEW if ok else C_DEL)
+        self.context = None
         self.wait(0.6)
         self.clear_find()
 
