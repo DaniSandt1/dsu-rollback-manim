@@ -1,5 +1,3 @@
-Enlace del video del avance: https://drive.google.com/file/d/1Bechh-e5sKgRYrynzRpX2TC7jUfC3Ukj/view?usp=drive_link
-
 # DSU con rollback, animado con Manim
 
 Proyecto 2 del curso **CS2023 – Algoritmos y Estructuras de Datos** (UTEC, 2026-2): un video
@@ -9,8 +7,11 @@ se genera a partir de la **traza real** de esa implementación.
 
 **Integrantes:** Daniel Sandoval · Percy Castro
 
-> Estado: en desarrollo. Ya están la implementación en C++, los tests, la exportación de trazas
-> y las seis escenas del video (≈ 4:45 en total). Ver [Hoja de ruta](#hoja-de-ruta).
+| | |
+|---|---|
+| **Video final** (1080p60, 4:37) | [Carpeta en Google Drive](https://drive.google.com/drive/u/0/folders/1CFkgbC1qCD-Gbf3nazMhq7Ty5xOcuhxU) |
+| **Informe** | [Google Docs](https://docs.google.com/document/d/1ZpUjOhfqUxqMUsHc-GXwiuKjz0sOIojjfxqTXWN4J20/edit?tab=t.0) |
+| Video del avance | [Google Drive](https://drive.google.com/file/d/1Bechh-e5sKgRYrynzRpX2TC7jUfC3Ukj/view?usp=drive_link) |
 
 ## La estructura de datos
 
@@ -31,6 +32,11 @@ Decisiones clave:
   `parent` y un `size`, por eso deshacerla cuesta O(1).
 - **Uniones redundantes:** si `a` y `b` ya estaban juntos, igual se apila un *marcador* vacío.
   Si no, `rollback()` desharía una unión anterior por error (ver el escenario `04_borde_sin_marcador`).
+
+**Usos en la práctica:** algoritmos de *backtracking* que prueban uniones y las deshacen,
+**conectividad dinámica offline** (aristas que aparecen y desaparecen, resuelta con un árbol de
+segmentos sobre el tiempo + DSU con rollback), verificar si un grafo sigue siendo **bipartito**
+mientras se prueban aristas, y en general cualquier operación de «deshacer» sobre grupos.
 
 ## Cómo funciona el proyecto
 
@@ -55,6 +61,8 @@ trace_loader.py                lee y valida las trazas
 components.py                  componentes visuales: nodo, bosque, arreglos parent/size, pila de historia
 animator.py                    TraceAnimator: convierte cada evento de la traza en animaciones
 dsu_video.py                   escenas del video
+video_completo.py              renderiza las seis escenas en orden y las une en un solo MP4
+guion.md                       guion de narración con marcas de tiempo
 ```
 
 ## Software requerido
@@ -80,15 +88,27 @@ build/Release/escenarios trace                  # (en Linux: build/escenarios tr
 python trace_loader.py
 ```
 
-## Renderizar la animación
+## Generar el video completo
+
+```bash
+python video_completo.py                 # renderiza las 6 escenas a 1080p60 y las une
+python video_completo.py --calidad l     # vista previa rápida (480p)
+python video_completo.py --solo-unir     # solo une escenas ya renderizadas
+```
+
+El resultado queda en `media/videos/DSU_con_rollback_1080p60.mp4` (MP4, H.264, 1920×1080, 60 fps,
+≈ 4:37). Las escenas se renderizan una por una y se unen sin recodificar; el script verifica que la
+duración final coincida con la suma de las escenas. Los tiempos de `guion.md` corresponden a este video.
+
+## Renderizar una escena
 
 | Escena | Contenido | Traza | Duración aprox. |
 |---|---|---|---|
 | `S00Motivacion` | título, autores y red de computadoras | `00_motivacion` | 0:20 |
-| `S01Operaciones` | ADT, `find` / `unite` / `same`, unión por tamaño | `01_union_por_tamano` | 1:02 |
-| `S02Rollback` | `snapshot`, `rollback_to`, `rollback` | `02_rollback` | 1:26 |
-| `S03SinCompresion` | por qué no se comprimen caminos | `07_sin_compresion` | 0:49 |
-| `S04CasoBorde` | unión redundante (con y sin marcador) y pila vacía | `04`, `03`, `05` | 0:48 |
+| `S01Operaciones` | ADT, `find` / `unite` / `same`, unión por tamaño | `01_union_por_tamano` | 1:00 |
+| `S02Rollback` | `snapshot`, `rollback_to`, `rollback` | `02_rollback` | 1:23 |
+| `S03SinCompresion` | por qué no se comprimen caminos | `07_sin_compresion` | 0:47 |
+| `S04CasoBorde` | unión redundante (con y sin marcador) y pila vacía | `04`, `03`, `05` | 0:46 |
 | `S05Complejidad` | tabla de costos y alturas medidas en C++ | `medidas/alturas.json` | 0:20 |
 
 ```bash
@@ -107,7 +127,7 @@ arreglos y la pila dibujados coincidan exactamente con el estado que registró e
 
 | Archivo | Qué muestra |
 |---|---|
-| `00_motivacion` | red de ciudades: probar un cable y deshacerlo |
+| `00_motivacion` | red de computadoras: probar una conexión y deshacerla |
 | `01_union_por_tamano` | `find`, `unite`, `same`, unión por tamaño |
 | `02_rollback` | `snapshot`, `rollback_to`, `rollback` |
 | `03_borde_redundante` | unión redundante → marcador en la pila |
@@ -127,9 +147,10 @@ guarda sus respuestas en `meta.expected_same`; el video las usa para marcar "✗
 - [x] Componentes de Manim: bosque, arreglos `parent`/`size`, pila de historia
 - [x] Animador de trazas y primera escena (`S02Rollback`)
 - [x] Escenas: motivación, concepto/ADT, rollback, por qué no compresión, casos borde, complejidad
-- [ ] Créditos y escena `VideoCompleto`
-- [ ] Guion de narración y render final (1080p60, ≤ 5 min)
-- [ ] Informe (PDF, ≤ 4 páginas)
+- [x] Video completo reproducible (`video_completo.py`) y render final 1080p60 (4:37, ≤ 5 min)
+- [x] Guion de narración con tiempos (`guion.md`)
+- [ ] Grabar la narración
+- [ ] Informe en PDF (≤ 4 páginas)
 
 ## Referencias
 
