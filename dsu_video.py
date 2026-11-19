@@ -8,13 +8,14 @@ Para revisar cualquier otra traza con el mismo animador:
 """
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
 from manim import *
 
 from animator import TraceAnimator
-from components import BG
+from components import BG, C_DEL, C_MUTED, C_NEW, C_ROOT, C_TEXT, txt
 from trace_loader import load_trace
 
 TRACE_DIR = Path(__file__).parent / "trace"
@@ -201,6 +202,152 @@ class S02Rollback(TraceScene):
         self.play(FadeOut(heading), FadeOut(explanation))
         trace = load_trace(TRACE_DIR / "02_rollback.json")
         RollbackAnimator(self, trace, "Snapshot y rollback").run()
+
+
+def fade_all(scene, rt=0.6):
+    """Saca todo de la pantalla (y detiene las flechas que siguen a los nodos)."""
+    mobs = list(scene.mobjects)
+    for m in mobs:
+        m.clear_updaters()
+    if mobs:
+        scene.play(*[FadeOut(m) for m in mobs], run_time=rt)
+
+
+def intro_card(scene, heading, lines, colors=None, wait_each=1.1, wait_end=1.2):
+    """Tarjeta de texto en el estilo de las otras escenas."""
+    title = Text(heading, font_size=40).to_edge(UP, buff=0.6)
+    colors = colors or [WHITE] * len(lines)
+    body = VGroup(*[Text(l, font_size=28, color=c) for l, c in zip(lines, colors)])
+    body.arrange(DOWN, buff=0.45).move_to(ORIGIN)
+    scene.play(FadeIn(title))
+    for line in body:
+        scene.play(FadeIn(line, shift=UP * 0.1), run_time=0.6)
+        scene.wait(wait_each)
+    scene.wait(wait_end)
+    scene.play(FadeOut(title), FadeOut(body), run_time=0.6)
+
+
+class S03SinCompresion(TraceScene):
+    """Por qué la estructura no comprime caminos: traza real de compresión + rollback."""
+
+    def construct(self):
+        intro_card(self, "¿Y la compresión de caminos?", [
+            "En un DSU normal, find() cuelga todo el camino de la raíz",
+            "Eso acelera las búsquedas siguientes...",
+            "...pero cambia punteros que la pila de rollback no registra",
+        ], colors=[WHITE, WHITE, RED_B], wait_each=0.9, wait_end=0.8)
+        trace = load_trace(TRACE_DIR / "07_sin_compresion.json")
+        TraceAnimator(self, trace, "Compresión de caminos + rollback", speed=1.25).run(
+            tail_wait=1.0, prelude_speed=3.0)
+        fade_all(self)
+        intro_card(self, "Por eso: sin compresión", [
+            "find() solo lee: no modifica la estructura",
+            "Cada unión cambia 1 parent y 1 size",
+            "Deshacerla es restaurar esos 2 valores: O(1)",
+        ], colors=[WHITE, WHITE, GREEN], wait_each=0.8, wait_end=0.8)
+
+
+class S04CasoBorde(TraceScene):
+    """Casos borde con trazas reales: unión redundante (con y sin marcador) y pila vacía."""
+
+    def construct(self):
+        intro_card(self, "Casos borde", [
+            "1. Unir dos elementos que ya están en el mismo conjunto",
+            "2. Hacer rollback() sin nada que deshacer",
+        ], wait_each=0.8, wait_end=0.5)
+        parts = [
+            ("04_borde_sin_marcador.json", "Error: no apilar la unión redundante"),
+            ("03_borde_redundante.json", "Correcto: apilar un marcador vacío"),
+            ("05_borde_pila_vacia.json", "rollback() con la pila vacía"),
+        ]
+        for file, title in parts:
+            trace = load_trace(TRACE_DIR / file)
+            TraceAnimator(self, trace, title, speed=1.6).run(tail_wait=1.0, prelude_speed=2.5)
+            fade_all(self)
+        intro_card(self, "Regla", [
+            "Cada unite() apila exactamente un registro",
+            "→ rollback() siempre deshace el último unite()",
+        ], colors=[WHITE, GREEN], wait_each=0.9, wait_end=0.8)
+
+
+class S05Complejidad(Scene):
+    """Tabla de costos y alturas MEDIDAS por el programa C++ (trace/medidas/alturas.json)."""
+
+    def setup(self):
+        self.camera.background_color = BG
+
+    def construct(self):
+        data = json.loads((TRACE_DIR / "medidas" / "alturas.json").read_text(encoding="utf-8"))
+        assert data.get("format") == "dsu-alturas/1", "alturas.json con formato desconocido"
+        rows = {r["n"]: r for r in data["rows"]}
+
+        heading = Text("Complejidad", font_size=42).to_edge(UP, buff=0.4)
+        self.play(FadeIn(heading))
+
+        table = [
+            ("find(x)", "O(log n)", "altura ≤ log₂ n por la unión por tamaño"),
+            ("unite(a, b)", "O(log n)", "2 find + enlace O(1)"),
+            ("same(a, b)", "O(log n)", "2 find"),
+            ("rollback()", "O(1)", "restaura 1 parent y 1 size"),
+            ("rollback_to(t)", "O(k)", "k = uniones que se deshacen"),
+            ("memoria", "O(n + m)", "arreglos + pila de m uniones"),
+        ]
+        col_x = (-6.0, -2.2, -0.2)
+        mobs = VGroup()
+        for i, (op, cost, why) in enumerate(table):
+            y = 1.6 - i * 0.7
+            a = txt(op, 28, C_ROOT, mono=True)
+            b = txt(cost, 28, GREEN if cost == "O(1)" else C_TEXT, mono=True)
+            c = txt(why, 24, C_MUTED)
+            for m, x in zip((a, b, c), col_x):
+                m.move_to([x + m.width / 2, y, 0])
+            mobs.add(VGroup(a, b, c))
+        mobs.move_to([0, mobs.get_center()[1], 0])
+        self.play(LaggedStart(*[FadeIn(r, shift=RIGHT * 0.2) for r in mobs], lag_ratio=0.25), run_time=2.4)
+        self.wait(3.0)
+        self.play(FadeOut(mobs), run_time=0.6)
+
+        # Alturas medidas en C++ (peor caso de cada estrategia).
+        sub = Text("Altura máxima medida en el peor caso (C++)", font_size=30).next_to(heading, DOWN, buff=0.45)
+        xs = (-4.2, -0.6, 3.6)
+        header = VGroup(txt("n", 28, C_MUTED, mono=True), txt("con unión por tamaño", 26, C_NEW),
+                        txt("sin unión por tamaño", 26, C_DEL))
+        for m, x in zip(header, xs):
+            m.move_to([x, 1.3, 0])
+        body = VGroup()
+        for i, n in enumerate((16, 128, 1024)):
+            r = rows[n]
+            cells = VGroup(txt(str(n), 30, mono=True),
+                           txt(str(r["por_tamano"]), 30, C_NEW, mono=True),
+                           txt(str(r["sin_tamano"]), 30, C_DEL, mono=True))
+            for m, x in zip(cells, xs):
+                m.move_to([x, 0.5 - i * 0.7, 0])
+            body.add(cells)
+        note = VGroup(txt("= log₂ n", 24, C_MUTED).move_to([xs[1], -1.75, 0]),
+                      txt("= n − 1", 24, C_MUTED).move_to([xs[2], -1.75, 0]))
+        self.play(FadeIn(sub), FadeIn(header), run_time=0.8)
+        self.play(LaggedStart(*[FadeIn(r, shift=UP * 0.15) for r in body], lag_ratio=0.3), run_time=1.5)
+        self.play(FadeIn(note), run_time=0.6)
+        self.wait(3.0)
+        self.play(FadeOut(sub), FadeOut(header), FadeOut(body), FadeOut(note), run_time=0.6)
+
+        # Comparación final.
+        left = VGroup(Text("DSU con compresión", font_size=30, color=YELLOW),
+                      Text("find: α(n) amortizado", font_size=26),
+                      Text("rollback: no se puede en O(1)", font_size=26, color=RED_B)).arrange(DOWN, buff=0.35)
+        right = VGroup(Text("DSU con rollback", font_size=30, color=YELLOW),
+                       Text("find: O(log n)", font_size=26),
+                       Text("rollback: O(1)", font_size=26, color=GREEN)).arrange(DOWN, buff=0.35)
+        VGroup(left, right).arrange(RIGHT, buff=2.0).move_to(DOWN * 0.1)
+        mid_x = (left.get_right()[0] + right.get_left()[0]) / 2
+        divider = Line(UP * 1.3, DOWN * 1.3, color=C_MUTED).move_to([mid_x, left.get_center()[1], 0])
+        tradeoff = Text("Pagamos log n en find a cambio de poder deshacer en O(1)",
+                        font_size=26, color=C_MUTED).to_edge(DOWN, buff=1.0)
+        self.play(FadeIn(left), FadeIn(right), Create(divider), run_time=1.0)
+        self.wait(1.5)
+        self.play(FadeIn(tradeoff), run_time=0.6)
+        self.wait(3.0)
+        self.play(*[FadeOut(m) for m in (heading, left, right, divider, tradeoff)], run_time=0.6)
 
 
 class TraceDemo(TraceScene):

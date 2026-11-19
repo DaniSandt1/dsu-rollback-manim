@@ -282,7 +282,7 @@ class HistoryStack(VGroup):
         color = C_MARK if marker else C_STACK
         box = RoundedRectangle(corner_radius=0.06, width=self.w - 0.24, height=self.entry_h - 0.07)
         box.set_fill(C_NODE_BG, 1).set_stroke(color, 2.5)
-        text = "∅ redundante" if marker else f"{labels[child]} → {labels[root]}"
+        text = "marcador" if marker else f"{labels[child]} → {labels[root]}"
         label = txt(text, max(14, int(self.entry_h * 48)), color, mono=True)
         if label.width > box.width - 0.15:
             label.scale_to_fit_width(box.width - 0.15)

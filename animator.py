@@ -41,6 +41,7 @@ class TraceAnimator:
         self.arrows: dict[int, Link] = {}   # hijo -> flecha hacia su padre
         self.parent_of: dict[int, int] = {}
         self.lit: set[int] = set()          # flechas resaltadas por un find
+        self.base_color: dict[int, str] = {}  # color de reposo de cada flecha
         self.rings: list[Mobject] = []
         self.ring = None                    # anillo del find en curso
         self.caption = None
@@ -49,6 +50,10 @@ class TraceAnimator:
         self.snapshots: dict[int, VGroup] = {}
         self.in_rollback_to = False
         self.context = None  # operación en curso: "unite", "same", "find" o None
+        # Respuestas que daría la implementación correcta (las calcula C++ en las trazas de error).
+        self.expected_same = list(trace.meta.get("expected_same", []))
+        self.same_count = 0
+        self.note_text = None  # aviso extra al lado del resultado (p. ej. "✗ correcto: true")
 
     # ------------------------------------------------------------- utilidades
 
@@ -84,13 +89,16 @@ class TraceAnimator:
 
     def set_op(self, text, color=C_TEXT):
         new = txt(text, 30, color, mono=True)
-        new.move_to([FOREST_X[0] + new.width / 2, 2.6, 0])
+        new.move_to([FOREST_X[0] + new.width / 2, 2.5, 0])
         anims = [FadeIn(new, shift=UP * 0.15)]
         if self.op_text is not None:
             anims.append(FadeOut(self.op_text, shift=UP * 0.15))
         if self.result_text is not None:
             anims.append(FadeOut(self.result_text))
             self.result_text = None
+        if self.note_text is not None:
+            anims.append(FadeOut(self.note_text))
+            self.note_text = None
         self.op_text = new
         self.play(*anims, rt=0.35)
 
@@ -106,7 +114,8 @@ class TraceAnimator:
         anims = [FadeOut(r) for r in self.rings]
         if self.ring is not None:
             anims.append(FadeOut(self.ring))
-        anims += [self.arrows[c].animate.set_color(C_LINK) for c in self.lit if c in self.arrows]
+        anims += [self.arrows[c].animate.set_color(self.base_color.get(c, C_LINK))
+                  for c in self.lit if c in self.arrows]
         self.rings, self.ring, self.lit = [], None, set()
         self.play(*anims, rt=0.3)
 
@@ -147,15 +156,21 @@ class TraceAnimator:
 
     # ------------------------------------------------------------- eventos
 
-    def run(self, tail_wait=1.5):
+    def run(self, tail_wait=1.5, prelude_speed=None):
+        """Reproduce la traza. `prelude_speed` acelera los eventos previos a la primera
+        marca narrativa (la preparación), para no gastar tiempo del video en ella."""
         self.build()
+        base_speed, seen_mark = self.speed, False
         for ev in self.trace.events[1:]:
+            seen_mark = seen_mark or ev.op == "mark"
+            self.speed = base_speed if (seen_mark or prelude_speed is None) else prelude_speed
             handler = getattr(self, "on_" + ev.op, None)
             if handler is None:
                 raise ValueError(f"evento sin animación: {ev.op}")
             handler(ev)
             self.state = ev.state
             self.check(ev.state)
+        self.speed = base_speed
         self.wait(tail_wait)
 
     def on_mark(self, ev):
@@ -241,6 +256,14 @@ class TraceAnimator:
         ok = ev["result"]
         self.set_result("→ true" if ok else "→ false", C_NEW if ok else C_DEL)
         self.context = None
+        if self.same_count < len(self.expected_same):
+            expected = bool(self.expected_same[self.same_count])
+            if expected != ok:
+                self.note_text = txt(f"✗ correcto: {'true' if expected else 'false'}", 26, C_DEL)
+                self.note_text.next_to(self.result_text, RIGHT, buff=0.4)
+                self.play(FadeIn(self.note_text, shift=LEFT * 0.2), Wiggle(self.result_text), rt=0.8)
+                self.wait(0.8)
+        self.same_count += 1
         self.wait(0.6)
         self.clear_find()
 
@@ -274,7 +297,26 @@ class TraceAnimator:
         link = self.arrows.pop(child)
         self.parent_of.pop(child)
         self.lit.discard(child)
+        self.base_color.pop(child, None)
         link.clear_updaters()
         self.play(FadeOut(link), rt=0.45)
         st = ev.state
         self.relayout(st, extra=self.parent_arr.update_to(st.parent, C_DEL) + self.size_arr.update_to(st.size, C_DEL))
+
+    def on_compress(self, ev):
+        """Compresión de caminos: la flecha de `node` pasa a apuntar directo a la raíz."""
+        v, new = ev["node"], ev["new"]
+        link = self.arrows[v]
+        a, b = self.nodes[v], self.nodes[new]
+        link.set_color(C_MARK)  # cambio que la pila NO registra
+        self.base_color[v] = C_MARK
+        self.parent_of[v] = new
+        st = ev.state
+        retarget = link.retarget(start_fn=lambda: edge_points(a, b)[0], end_fn=lambda: edge_points(a, b)[1])
+        self.relayout(st, extra=[retarget] + self.parent_arr.update_to(st.parent, C_MARK))
+
+    def on_compress_done(self, ev):
+        k = ev["changed"]
+        self.set_result(f"→ {k} puntero{'s' if k != 1 else ''} fuera de la pila", C_MARK)
+        self.play(Indicate(self.stack.frame, color=C_MARK), rt=0.8)
+        self.wait(0.8)
