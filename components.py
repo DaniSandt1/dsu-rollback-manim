@@ -122,8 +122,18 @@ class Tag(VGroup):
 
 
 def edge_points(child, parent):
-    """Extremos de la flecha hijo → padre, sobre el borde de cada círculo."""
-    c, p = child.get_center(), parent.get_center()
+    """Extremos de la flecha hijo → padre.
+
+    Sale del borde del círculo del hijo. Llega al borde del círculo del padre o, si el
+    padre tiene la etiqueta debajo, justo bajo esa etiqueta (para no taparla).
+    """
+    c = child.circle.get_center()
+    if parent.label_below:
+        end = parent.label.get_bottom() + DOWN * 0.05
+        d = end - c
+        u = d / max(np.linalg.norm(d), 1e-6)
+        return c + u * child.radius, end
+    p = parent.circle.get_center()
     d = p - c
     length = np.linalg.norm(d)
     u = d / length if length > 1e-6 else UP
@@ -133,14 +143,25 @@ def edge_points(child, parent):
 class ForestNode(VGroup):
     """Un elemento del DSU: círculo con su etiqueta. Las raíces llevan borde dorado."""
 
-    def __init__(self, label, radius=0.3):
+    def __init__(self, label, radius=0.3, max_label_w=None):
         super().__init__()
         self.radius = radius
         self.circle = Circle(radius=radius).set_fill(C_NODE_BG, 1).set_stroke(C_NODE, 3)
         self.label = txt(str(label), max(14, int(radius * 85)), mono=True).move_to(self.circle)
-        if self.label.width > radius * 1.5:
-            self.label.scale_to_fit_width(radius * 1.5)
+        self.label_below = self.label.width > radius * 1.5
+        if self.label_below:
+            # Etiqueta larga (p. ej. un nombre): va debajo del círculo, con tamaño legible
+            # y sin pasar del espacio disponible entre nodos vecinos.
+            self.label = txt(str(label), max(18, int(radius * 70)), mono=True)
+            if max_label_w is not None and self.label.width > max_label_w:
+                self.label.scale_to_fit_width(max_label_w)
+            self.label.next_to(self.circle, DOWN, buff=0.06)
         self.add(self.circle, self.label)
+
+    def place(self, point):
+        """Ubica el nodo de modo que el CENTRO DEL CÍRCULO quede en `point`."""
+        self.shift(np.array(point) - self.circle.get_center())
+        return self
 
     def style_root(self, is_root):
         self.circle.set_stroke(C_ROOT if is_root else C_NODE, 4 if is_root else 3)
