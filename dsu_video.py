@@ -58,7 +58,9 @@ class S00Motivacion(Scene):
                 self.wait(1)
             elif event.op == "link":
                 a, b = pending
-                cable = Line(nodes[a].get_center(), nodes[b].get_center(), color=GREEN, stroke_width=5)
+                # De borde a borde de las pantallas, para no tapar las letras.
+                cable = Line(nodes[a][0].get_center(), nodes[b][0].get_center(), buff=0.56,
+                             color=GREEN, stroke_width=5)
                 cables.append(cable)
                 new = Text(f"Conectamos {trace.labels()[a]} y {trace.labels()[b]}", font_size=25).to_edge(DOWN)
                 self.play(Create(cable), Transform(caption, new))
