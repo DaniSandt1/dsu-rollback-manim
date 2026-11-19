@@ -5,6 +5,7 @@
 // pila de historia, pasos de find) sale de esta ejecución real.
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
 #include <functional>
 #include <string>
 #include <vector>
@@ -74,7 +75,10 @@ static void borde_redundante(Tracer& t) {
 
 // Caso borde: el mismo escenario SIN marcador (error típico).
 static void borde_sin_marcador(Tracer& t) {
-    t.meta(Fields().add("bug", true));
+    // Respuesta correcta: la misma secuencia con la implementación buena (con marcador).
+    DSURollback ok(5);
+    ok.unite(0, 1), ok.unite(1, 2), ok.unite(2, 0), ok.rollback();
+    t.meta(Fields().add("bug", true).add("expected_same", std::vector<int>{ok.same(0, 2)}));
     DSURollback d(5, &t, /*record_noops=*/false);
     d.unite(0, 1);
     d.unite(1, 2);
@@ -114,6 +118,68 @@ static void peor_caso_altura(Tracer& t) {
     d.find(deepest);
 }
 
+// Por qué no se usa compresión de caminos: comprime, deshace y la respuesta sale mal.
+static void sin_compresion(Tracer& t) {
+    // Respuestas correctas: la misma secuencia con find SIN compresión.
+    DSURollback ok(8);
+    ok.unite(0, 1), ok.unite(2, 3), ok.unite(0, 2), ok.unite(4, 5), ok.unite(6, 7), ok.unite(4, 6);
+    ok.unite(0, 4), ok.find(7), ok.rollback();
+    t.meta(Fields()
+               .add("inconsistent_after_rollback", true)
+               .add("expected_same", std::vector<int>{ok.same(7, 4), ok.same(7, 1)}));
+    DSURollback d(8, &t);
+    d.unite(0, 1);
+    d.unite(2, 3);
+    d.unite(0, 2);
+    d.unite(4, 5);
+    d.unite(6, 7);
+    d.unite(4, 6);
+    d.mark("Unimos los dos árboles");
+    d.unite(0, 4);
+    d.mark("find(7) CON compresión: todo el camino pasa a apuntar a la raíz");
+    d.find_with_compression(7);
+    d.mark("Ahora deshacemos la última unión");
+    d.rollback();
+    d.mark("6 y 7 siguen colgados de 0: la pila no registró esos cambios");
+    d.same(7, 4);  // debería ser true
+    d.same(7, 1);  // debería ser false
+}
+
+// Altura máxima medida en el peor caso, con y sin unión por tamaño.
+static int max_depth(const std::vector<int>& parent) {
+    int best = 0;
+    for (int i = 0; i < static_cast<int>(parent.size()); ++i) {
+        int k = 0;
+        for (int x = i; parent[x] != x; x = parent[x]) ++k;
+        if (k > best) best = k;
+    }
+    return best;
+}
+
+static bool write_heights(const fs::path& path) {
+    std::string rows;
+    for (int n = 2; n <= 1024; n *= 2) {
+        // Con unión por tamaño: el peor caso son uniones balanceadas.
+        DSURollback d(n);
+        for (int step = 1; step < n; step <<= 1)
+            for (int i = 0; i + step < n; i += 2 * step) d.unite(i, i + step);
+        // Sin unión por tamaño (siempre se cuelga la raíz de a bajo la de b): una cadena.
+        std::vector<int> naive(n);
+        for (int i = 0; i < n; ++i) naive[i] = i;
+        auto root = [&](int x) {
+            while (naive[x] != x) x = naive[x];
+            return x;
+        };
+        for (int i = 0; i + 1 < n; ++i) naive[root(i)] = root(i + 1);
+        rows += std::string(rows.empty() ? "" : ",\n") + "    {\"n\": " + std::to_string(n) +
+                ", \"por_tamano\": " + std::to_string(max_depth(d.parent())) +
+                ", \"sin_tamano\": " + std::to_string(max_depth(naive)) + "}";
+    }
+    std::ofstream f(path, std::ios::binary);
+    f << "{\n  \"format\": \"dsu-alturas/1\",\n  \"rows\": [\n" << rows << "\n  ]\n}\n";
+    return static_cast<bool>(f);
+}
+
 int main(int argc, char** argv) {
     const fs::path out = argc > 1 ? fs::path(argv[1]) : fs::path("trace");
     fs::create_directories(out);
@@ -131,6 +197,7 @@ int main(int argc, char** argv) {
         {"04_borde_sin_marcador", "Error típico: no apilar la unión redundante", borde_sin_marcador},
         {"05_borde_pila_vacia", "rollback() con la historia vacía", borde_pila_vacia},
         {"06_peor_caso_altura", "Uniones balanceadas: altura log2(n)", peor_caso_altura},
+        {"07_sin_compresion", "Compresión de caminos + rollback: estado inconsistente", sin_compresion},
     };
 
     int failures = 0;
@@ -144,6 +211,14 @@ int main(int argc, char** argv) {
             std::printf("ERROR: no se pudo escribir %s\n", path.generic_string().c_str());
             ++failures;
         }
+    }
+    const fs::path heights = out / "medidas" / "alturas.json";
+    fs::create_directories(heights.parent_path());
+    if (write_heights(heights)) {
+        std::printf("%-26s           -> %s\n", "alturas", heights.generic_string().c_str());
+    } else {
+        std::printf("ERROR: no se pudo escribir %s\n", heights.generic_string().c_str());
+        ++failures;
     }
     return failures == 0 ? 0 : 1;
 }

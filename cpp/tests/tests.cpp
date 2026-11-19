@@ -222,6 +222,28 @@ static void test_altura_logaritmica() {
     CHECK(max_depth(d) == 10);  // se alcanza exactamente log2(n)
 }
 
+// Por qué no se comprime: los cambios de la compresión no quedan en la pila.
+static void test_compresion_rompe_rollback() {
+    DSURollback d(8);
+    d.unite(0, 1), d.unite(2, 3), d.unite(0, 2), d.unite(4, 5), d.unite(6, 7), d.unite(4, 6);
+    d.unite(0, 4);
+    CHECK(depth(d, 7) == 3);
+    CHECK(d.find_with_compression(7) == 0);
+    CHECK(d.parent()[7] == 0 && d.parent()[6] == 0);  // camino comprimido
+    CHECK(d.history().size() == 7);                    // la pila no registró la compresión
+    d.rollback();                                      // deshace unite(0, 4)
+    CHECK(!d.same(7, 4));  // incorrecto: 7 debería volver con 4...
+    CHECK(d.same(7, 1));   // ...y no estar con 1
+    // Sin compresión, el mismo rollback deja todo bien.
+    DSURollback e(8);
+    e.unite(0, 1), e.unite(2, 3), e.unite(0, 2), e.unite(4, 5), e.unite(6, 7), e.unite(4, 6);
+    e.unite(0, 4);
+    e.find(7);
+    e.rollback();
+    CHECK(e.same(7, 4));
+    CHECK(!e.same(7, 1));
+}
+
 static void test_tracer() {
     Tracer t("prueba");
     DSURollback d(3, &t);
@@ -313,6 +335,7 @@ int main() {
         {"borde: rollback con pila vacia", test_rollback_pila_vacia},
         {"rangos invalidos", test_rangos},
         {"altura <= log2(n)", test_altura_logaritmica},
+        {"compresion + rollback deja la estructura mal", test_compresion_rompe_rollback},
         {"tracer registra los eventos", test_tracer},
         {"aleatorio vs fuerza bruta (BFS)", test_aleatorio_vs_fuerza_bruta},
     };

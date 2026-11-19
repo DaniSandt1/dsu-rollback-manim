@@ -112,7 +112,7 @@ def _check(cond: bool, ev: Event, msg: str):
         raise TraceError(f"evento {ev.id} ({ev.op}): {msg}")
 
 
-def _check_forest(s: State, ev: Event):
+def _check_forest(s: State, ev: Event, sizes_consistent: bool = True):
     n = s.n
     _check(len(s.size) == n, ev, "parent y size de distinto largo")
     roots = s.roots()
@@ -120,6 +120,8 @@ def _check_forest(s: State, ev: Event):
     for x in range(n):
         _check(0 <= s.parent[x] < n, ev, f"parent[{x}] fuera de rango")
         _check(s.depth(x) < n, ev, "hay un ciclo en parent")  # depth termina solo si no hay ciclos
+    if not sizes_consistent:
+        return
     for r in roots:
         members = sum(1 for x in range(n) if s.root_of(x) == r)
         _check(s.size[r] == members, ev, f"size[{r}] = {s.size[r]} pero el conjunto tiene {members}")
@@ -128,11 +130,17 @@ def _check_forest(s: State, ev: Event):
 def validate(trace: Trace) -> None:
     """Revisa invariantes y que cada evento produzca el cambio de estado esperado."""
     _check(bool(trace.events) and trace.events[0].op == "init", trace.events[0], "la traza debe empezar con init")
+    # La traza de compresión queda inconsistente A PROPÓSITO después del rollback
+    # (eso es lo que muestra el video): ahí no se exige que size coincida con el árbol.
+    relaxed = bool(trace.meta.get("inconsistent_after_rollback"))
+    broken = False
     prev = None
     for ev in trace.events:
         s = ev.state
+        if relaxed and ev.op == "unlink":
+            broken = True
         if s.n:
-            _check_forest(s, ev)
+            _check_forest(s, ev, sizes_consistent=not broken)
         if prev is not None:
             _check(s.n == prev.n, ev, "cambió la cantidad de elementos")
             changed = s.parent != prev.parent or s.size != prev.size
@@ -145,6 +153,11 @@ def validate(trace: Trace) -> None:
                 c, r = ev["child"], ev["root"]
                 _check(prev.parent[c] == r and s.parent[c] == c, ev, "unlink mal aplicado")
                 _check(s.size[r] == prev.size[r] - s.size[c], ev, "size no se restauró")
+            elif ev.op == "compress":
+                v, old, new = ev["node"], ev["old"], ev["new"]
+                _check(prev.parent[v] == old and s.parent[v] == new, ev, "compress mal aplicado")
+                _check(s.parent[new] == new, ev, "compress debe apuntar a la raíz")
+                _check(s.size == prev.size and s.history == prev.history, ev, "compress no toca size ni history")
             elif ev.op == "push":
                 _check(len(s.history) == len(prev.history) + 1, ev, "push no agregó a la historia")
                 _check(list(s.history[-1]) == [ev["child"], ev["root"]], ev, "push registró otro cambio")

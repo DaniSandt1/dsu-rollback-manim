@@ -2,7 +2,7 @@
   "format": "dsu-rollback-trace/1",
   "scenario": "04_borde_sin_marcador",
   "description": "Error típico: no apilar la unión redundante",
-  "meta": {"bug": true},
+  "meta": {"bug": true, "expected_same": [1]},
   "events": [
     {"id":0,"op":"init","n":5,"record_noops":false,"state":{"parent":[0,1,2,3,4],"size":[1,1,1,1,1],"history":[],"components":5}},
     {"id":1,"op":"unite_call","a":0,"b":1,"state":{"parent":[0,1,2,3,4],"size":[1,1,1,1,1],"history":[],"components":5}},

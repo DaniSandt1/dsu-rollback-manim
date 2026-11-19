@@ -1,0 +1,15 @@
+{
+  "format": "dsu-alturas/1",
+  "rows": [
+    {"n": 2, "por_tamano": 1, "sin_tamano": 1},
+    {"n": 4, "por_tamano": 2, "sin_tamano": 3},
+    {"n": 8, "por_tamano": 3, "sin_tamano": 7},
+    {"n": 16, "por_tamano": 4, "sin_tamano": 15},
+    {"n": 32, "por_tamano": 5, "sin_tamano": 31},
+    {"n": 64, "por_tamano": 6, "sin_tamano": 63},
+    {"n": 128, "por_tamano": 7, "sin_tamano": 127},
+    {"n": 256, "por_tamano": 8, "sin_tamano": 255},
+    {"n": 512, "por_tamano": 9, "sin_tamano": 511},
+    {"n": 1024, "por_tamano": 10, "sin_tamano": 1023}
+  ]
+}

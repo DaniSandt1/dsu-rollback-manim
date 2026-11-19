@@ -119,6 +119,26 @@ public:
         if (tracing()) emit("rollback_to_done", Fields().add("t", t));
     }
 
+    // SOLO PARA LA DEMOSTRACIÓN DEL VIDEO: find con compresión de caminos.
+    // Cuelga de la raíz a todos los nodos del camino, pero esos cambios NO se apilan en
+    // history: un rollback() posterior deja la estructura inconsistente. Por eso la
+    // estructura real (find) no comprime.
+    int find_with_compression(int x) {
+        const int root = find(x);
+        int changed = 0;
+        while (x != root) {
+            const int next = parent_[x];
+            if (next != root) {
+                parent_[x] = root;
+                ++changed;
+                if (tracing()) emit("compress", Fields().add("node", x).add("old", next).add("new", root));
+            }
+            x = next;
+        }
+        if (tracing()) emit("compress_done", Fields().add("root", root).add("changed", changed));
+        return root;
+    }
+
     // Marca narrativa para sincronizar la animación (no cambia el estado).
     void mark(const std::string& text) const {
         if (tracing()) emit("mark", Fields().add("text", text));
