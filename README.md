@@ -98,7 +98,9 @@ python video_completo.py --solo-unir     # solo une escenas ya renderizadas
 
 El resultado queda en `media/videos/DSU_con_rollback_1080p60.mp4` (MP4, H.264, 1920×1080, 60 fps,
 ≈ 4:37). Las escenas se renderizan una por una y se unen sin recodificar; el script verifica que la
-duración final coincida con la suma de las escenas. Los tiempos de `guion.md` corresponden a este video.
+duración final coincida con la suma de las escenas. Los tiempos de `guion.md` corresponden a este video
+(la vista previa a 480p dura un poco más, ≈ 4:45, porque a 15 fps cada animación se redondea a
+cuadros enteros).
 
 ## Renderizar una escena
 
