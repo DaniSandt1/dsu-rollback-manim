@@ -9,9 +9,7 @@ se genera a partir de la **traza real** de esa implementación.
 
 | | |
 |---|---|
-| **Video final** (1080p60, 4:37) | [Carpeta en Google Drive](https://drive.google.com/drive/u/0/folders/1CFkgbC1qCD-Gbf3nazMhq7Ty5xOcuhxU) |
-| **Informe** | [Google Docs](https://docs.google.com/document/d/1ZpUjOhfqUxqMUsHc-GXwiuKjz0sOIojjfxqTXWN4J20/edit?tab=t.0) |
-| Video del avance | [Google Drive](https://drive.google.com/file/d/1Bechh-e5sKgRYrynzRpX2TC7jUfC3Ukj/view?usp=drive_link) |
+| **Video final e informe** | [Carpeta en Google Drive](https://drive.google.com/drive/u/0/folders/1CFkgbC1qCD-Gbf3nazMhq7Ty5xOcuhxU) |
 
 ## La estructura de datos
 
@@ -142,17 +140,6 @@ arreglos y la pila dibujados coincidan exactamente con el estado que registró e
 En las trazas de error (`04`, `07`) el programa C++ ejecuta en paralelo la versión correcta y
 guarda sus respuestas en `meta.expected_same`; el video las usa para marcar "✗ correcto: …".
 `find_with_compression` existe solo para esa demostración: la estructura real nunca comprime.
-
-## Hoja de ruta
-
-- [x] DSU con rollback en C++, tests y exportación de trazas a JSON
-- [x] Componentes de Manim: bosque, arreglos `parent`/`size`, pila de historia
-- [x] Animador de trazas y primera escena (`S02Rollback`)
-- [x] Escenas: motivación, concepto/ADT, rollback, por qué no compresión, casos borde, complejidad
-- [x] Video completo reproducible (`video_completo.py`) y render final 1080p60 (4:37, ≤ 5 min)
-- [x] Guion de narración con tiempos (`guion.md`)
-- [ ] Grabar la narración
-- [ ] Informe en PDF (≤ 4 páginas)
 
 ## Referencias
 
